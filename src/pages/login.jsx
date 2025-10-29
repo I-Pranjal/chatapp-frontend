@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { Lock, User, Phone, Eye } from "lucide-react";
 
-export default function LoginPage() {
+export default function AuthPage() {
+  const [isLogin, setIsLogin] = useState(true);
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [password, setPassword] = useState("");
@@ -12,13 +13,13 @@ export default function LoginPage() {
 
   const validate = () => {
     const e = {};
-    if (!name.trim()) e.name = "Name is required.";
     if (!contact.trim()) e.contact = "Contact number is required.";
     else if (!/^\d{7,15}$/.test(contact.trim()))
-      e.contact = "Contact must be digits (7-15 characters).";
+      e.contact = "Contact must be digits (7–15 characters).";
     if (!password) e.password = "Password is required.";
     else if (password.length < 6)
       e.password = "Password must be at least 6 characters.";
+    if (!isLogin && !name.trim()) e.name = "Name is required.";
     return e;
   };
 
@@ -31,24 +32,32 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/login", {
+      const url = isLogin
+        ? "http://localhost:5001/api/auth/login"
+        : "http://localhost:5001/api/auth/register";
+
+      const body = isLogin
+        ? { contact, password }
+        : { name, contact, password };
+
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          contact: contact.trim(),
-          password,
-        }),
+        body: JSON.stringify(body),
       });
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.message || "Login failed");
-      }
-
       const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Authentication failed");
+
       if (data.token) localStorage.setItem("token", data.token);
-      setMessage({ type: "success", text: "Login successful." });
+      setMessage({
+        type: "success",
+        text: isLogin
+          ? "Login successful ✅"
+          : "Account created successfully 🎉",
+      });
+      // Go to chat page 
+      window.location.href = "/chat";
     } catch (err) {
       setMessage({
         type: "error",
@@ -60,49 +69,55 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-green-400 via-emerald-500 to-teal-600 font-sans px-4" style={{width:"100vw"}}>
+    <div
+      className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-400 via-emerald-500 to-teal-600 font-sans px-4"
+      style={{ width: "100vw" }}
+    >
       <div className="w-full max-w-md bg-black/10 backdrop-blur-xl rounded-2xl shadow-2xl p-8 ring-1 ring-white/20">
-        <h2 className="text-3xl font-semibold text-center text-white mb-6">
-          Welcome Back 👋
+        <h2 className="text-3xl font-semibold text-center text-white mb-2">
+          {isLogin ? "Welcome Back 👋" : "Create Account 🚀"}
         </h2>
         <p className="text-center text-white/80 text-sm mb-8">
-          Sign in to continue chatting
+          {isLogin
+            ? "Sign in to continue chatting"
+            : "Join now to start chatting with friends"}
         </p>
 
-        {message?.type === "success" && (
-          <div className="text-green-300 text-sm text-center mb-3">
-            {message.text}
-          </div>
-        )}
-        {message?.type === "error" && (
-          <div className="text-red-300 text-sm text-center mb-3">
+        {message && (
+          <div
+            className={`text-sm text-center mb-3 ${
+              message.type === "success" ? "text-green-300" : "text-red-300"
+            }`}
+          >
             {message.text}
           </div>
         )}
 
         <form onSubmit={handleSubmit} noValidate>
-          {/* Name */}
-          <div className="mb-4 relative">
-            <label
-              htmlFor="name"
-              className="block text-sm font-medium text-white mb-1"
-            >
-              Name
-            </label>
-            <div className="relative">
-              <User className="absolute left-3 top-2.5 text-white/70 w-4 h-4" />
-              <input
-                id="name"
-                className="block w-full bg-white/20 text-white placeholder-white/50 rounded-lg pl-9 pr-3 py-2 border border-white/30 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Enter your name"
-              />
+          {/* Name (Sign Up Only) */}
+          {!isLogin && (
+            <div className="mb-4 relative">
+              <label
+                htmlFor="name"
+                className="block text-sm font-medium text-white mb-1"
+              >
+                Name
+              </label>
+              <div className="relative">
+                <User className="absolute left-3 top-2.5 text-white/70 w-4 h-4" />
+                <input
+                  id="name"
+                  className="block w-full bg-white/20 text-white placeholder-white/50 rounded-lg pl-9 pr-3 py-2 border border-white/30 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter your name"
+                />
+              </div>
+              {errors.name && (
+                <p className="text-red-300 text-xs mt-1">{errors.name}</p>
+              )}
             </div>
-            {errors.name && (
-              <p className="text-red-300 text-xs mt-1">{errors.name}</p>
-            )}
-          </div>
+          )}
 
           {/* Contact */}
           <div className="mb-4 relative">
@@ -148,10 +163,10 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password"
               />
-
-                <Eye 
+              <Eye
                 onClick={() => setShowPassword((s) => !s)}
-                className="w-4 h-4 absolute right-3 top-3" />
+                className="w-4 h-4 absolute right-3 top-3 cursor-pointer text-white/70 hover:text-white"
+              />
             </div>
             {errors.password && (
               <p className="text-red-300 text-xs mt-1">{errors.password}</p>
@@ -168,9 +183,31 @@ export default function LoginPage() {
                 : "bg-emerald-500 hover:bg-emerald-600"
             } focus:outline-none focus:ring-2 focus:ring-emerald-300`}
           >
-            {loading ? "Signing in..." : "Sign In"}
+            {loading
+              ? isLogin
+                ? "Signing in..."
+                : "Creating account..."
+              : isLogin
+              ? "Sign In"
+              : "Sign Up"}
           </button>
         </form>
+
+        {/* Switch Mode */}
+        <p className="text-center text-white/80 text-sm mt-6 flex items-center justify-center">
+          {isLogin ? "New here ? " : "Already registered ? "}{" "}
+          <p
+            onClick={() => {
+              setIsLogin(!isLogin);
+              setMessage(null);
+              setErrors({});
+              setPassword("");
+            }}
+            className="text-emerald-200 hover:text-white font-medium px-2 underline-offset-2 hover:underline"
+          >
+            {isLogin ? " Sign up" : " Sign in"}
+          </p>
+        </p>
       </div>
     </div>
   );
