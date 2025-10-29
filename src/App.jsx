@@ -1,89 +1,148 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import './App.css'
-import ChatWindow from './components/chatWindow.jsx'
-import Sidebar from './components/Sidebar.jsx'
-import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useNavigate, Link } from 'react-router-dom'
-import LoginPage from './pages/login.jsx'
+import React, { useEffect, useMemo, useState } from "react";
+import "./App.css";
+import ChatWindow from "./components/ChatWindow.jsx";
+import Sidebar from "./components/Sidebar.jsx";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  useParams,
+  useNavigate,
+  Link,
+} from "react-router-dom";
+import LoginPage from "./pages/login.jsx";
+
+const API_BASE = "http://localhost:5003/api"; // 🔧 adjust if deployed
+const DEFAULT_CHAT_ID = "690245f2098a59a3f7d1d47d";
+const CURRENT_USER = {
+  _id: "6901d9899976ace64f63d4ae",
+  name: "Doctor strange",
+};
 
 function AppInner() {
-  const INITIAL = []
-  const [conversations, setConversations] = useState(() => {
+  const [conversations, setConversations] = useState([]);
+  const [activeId, setActiveId] = useState(DEFAULT_CHAT_ID);
+  const [query, setQuery] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const navigate = useNavigate();
+
+  // ✅ Load chat messages for the default chat
+useEffect(() => {
+  const fetchMessages = async () => {
     try {
-      const raw = localStorage.getItem('chatt:conversations')
-      return raw ? JSON.parse(raw) : INITIAL
-    } catch (e) {
-      return INITIAL
+      // ✅ Get token from localStorage
+      const token = localStorage.getItem("token");
+
+      // ✅ Check if token exists
+      if (!token) {
+        console.error("⚠️ No auth token found in localStorage");
+        return;
+      }
+
+      // ✅ Fetch messages with Authorization header
+      const res = await fetch(`${API_BASE}/chats/message/${DEFAULT_CHAT_ID}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`, // ✅ Attach token here
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+
+      const data = await res.json();
+      console.log("📩 Fetched messages:", data);
+
+      const formatted = {
+        id: DEFAULT_CHAT_ID,
+        name: "रघु",
+        avatarColor: "#4B7BE5",
+        messages: data.map((msg) => ({
+          id: msg._id,
+          text: msg.text,
+          ts: msg.createdAt,
+          fromMe: msg.sender._id === CURRENT_USER._id,
+        })),
+      };
+
+      setConversations([formatted]);
+    } catch (err) {
+      console.error("❌ Failed to load chat:", err);
     }
-  })
+  };
 
-  const [activeId, setActiveId] = useState(conversations[0]?.id || null)
-  const [query, setQuery] = useState('')
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  fetchMessages();
+}, []);
 
-  const navigate = useNavigate()
 
-  useEffect(() => {
-    localStorage.setItem('chatt:conversations', JSON.stringify(conversations))
-  }, [conversations])
-
-  const active = useMemo(() => conversations.find((c) => c.id === activeId) || conversations[0] || null, [conversations, activeId])
+  const active = useMemo(
+    () => conversations.find((c) => c.id === activeId) || conversations[0] || null,
+    [conversations, activeId]
+  );
 
   useEffect(() => {
-    if (!active && conversations.length) setActiveId(conversations[0].id)
-  }, [active, conversations])
+    if (!active && conversations.length) setActiveId(conversations[0].id);
+  }, [active, conversations]);
 
-  function selectConversation(id) {
-    setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, unread: 0 } : c)))
-    setActiveId(id)
-    navigate(`/chat/${id}`)
-    if (window.innerWidth < 900) setSidebarOpen(false)
-  }
+  // ✅ Send message to backend
+  async function handleSendMessage(text) {
+    if (!text.trim() || !active) return;
 
-  function sendMessage(text) {
-    if (!text.trim() || !active) return
-    const msg = { id: 'm' + Date.now(), fromMe: true, text: text.trim(), ts: Date.now() }
-    setConversations((prev) => prev.map((c) => (c.id === active.id ? { ...c, messages: [...c.messages, msg], lastMessage: msg.text } : c)))
-  }
+    const newMsg = {
+      chatId: DEFAULT_CHAT_ID,
+      sender: CURRENT_USER._id,
+      text: text.trim(),
+    };
 
-  function receiveMockReply() {
-    if (!active) return
-    const reply = { id: 'r' + Date.now(), fromMe: false, text: 'Nice — got your message!', ts: Date.now() }
-    setTimeout(() => {
-      setConversations((prev) => prev.map((c) => {
-        if (c.id === active.id) return { ...c, messages: [...c.messages, reply], lastMessage: reply.text }
-        return c
-      }))
-    }, 800)
-  }
+    try {
+      const res = await fetch(`${API_BASE}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newMsg),
+      });
 
-  function handleSendAndReply(text) {
-    sendMessage(text)
-    receiveMockReply()
-  }
+      const saved = await res.json();
 
-  function addConversation(name) {
-    const id = 'c' + Date.now()
-    const newConv = { id, name, avatarColor: '#34d399', unread: 0, lastMessage: '', messages: [] }
-    setConversations((prev) => [newConv, ...prev])
-    setActiveId(id)
-    navigate(`/chat/${id}`)
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === active.id
+            ? {
+                ...c,
+                messages: [
+                  ...c.messages,
+                  { id: saved._id, text: saved.text, ts: saved.createdAt, fromMe: true },
+                ],
+              }
+            : c
+        )
+      );
+    } catch (err) {
+      console.error("❌ Error sending message:", err);
+    }
   }
 
   function filteredConversations() {
-    const q = query.trim().toLowerCase()
-    if (!q) return conversations
-    return conversations.filter((c) => c.name.toLowerCase().includes(q) || (c.lastMessage || '').toLowerCase().includes(q))
+    const q = query.trim().toLowerCase();
+    if (!q) return conversations;
+    return conversations.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        (c.lastMessage || "").toLowerCase().includes(q)
+    );
   }
 
   function ChatRoute() {
-    const { id } = useParams()
+    const { id } = useParams();
     useEffect(() => {
-      if (id) setActiveId(id)
-    }, [id])
+      if (id) setActiveId(id);
+    }, [id]);
 
-    const conv = conversations.find((c) => c.id === id) || conversations[0] || null
-    if (!conv) return <div className="empty">No conversation found</div>
-    return <ChatWindow conversation={conv} onSend={handleSendAndReply} />
+    const conv = conversations.find((c) => c.id === id) || conversations[0] || null;
+    if (!conv) return <div className="empty">No conversation found</div>;
+    return <ChatWindow conversation={conv} onSend={handleSendMessage} />;
   }
 
   function ChatPage() {
@@ -96,20 +155,30 @@ function AppInner() {
           setQuery={setQuery}
           filteredConversations={filteredConversations()}
           activeId={active?.id}
-          selectConversation={selectConversation}
-          addConversation={addConversation}
+          selectConversation={(id) => setActiveId(id)}
+          addConversation={() => {}}
           totalCount={conversations.length}
         />
 
         <main className="main-area">
           <Routes>
-            <Route path="/" element={<Navigate to={`/chat/${conversations[0]?.id || ''}`} replace />} />
+            <Route
+              path="/"
+              element={
+                <Navigate to={`/chat/${DEFAULT_CHAT_ID}`} replace />
+              }
+            />
             <Route path=":id" element={<ChatRoute />} />
-            <Route path="*" element={<div className="empty">Select a conversation to start chatting</div>} />
+            <Route
+              path="*"
+              element={
+                <div className="empty">Select a conversation to start chatting</div>
+              }
+            />
           </Routes>
         </main>
       </div>
-    )
+    );
   }
 
   return (
@@ -119,7 +188,7 @@ function AppInner() {
         element={
           <div className="home">
             <h1>Welcome</h1>
-            <nav style={{ display: 'flex', gap: 12 }}>
+            <nav style={{ display: "flex", gap: 12 }}>
               <Link to="/login">Login Page</Link>
               <Link to="/chat">Chat Page</Link>
             </nav>
@@ -130,7 +199,7 @@ function AppInner() {
       <Route path="/chat/*" element={<ChatPage />} />
       <Route path="*" element={<div className="empty">Page not found</div>} />
     </Routes>
-  )
+  );
 }
 
 export default function App() {
@@ -138,5 +207,5 @@ export default function App() {
     <Router>
       <AppInner />
     </Router>
-  )
+  );
 }
