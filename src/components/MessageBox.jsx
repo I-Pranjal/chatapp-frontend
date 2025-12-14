@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Paperclip, Send } from "lucide-react";
 
 const API_BASE = "http://localhost:5003/api"; // adjust if deployed
 
@@ -11,8 +12,16 @@ export default function MessageBox({ chatId, onSendMessage }) {
     if (!input.trim() || !chatId) return;
 
     const token = localStorage.getItem("token");
-    if (!token) {
-      console.error("❌ No token found in localStorage");
+    
+    // If no token or chatId is a sample ID, just use local state
+    if (!token || chatId.startsWith('sample-')) {
+      onSendMessage({
+        id: `msg-${Date.now()}`,
+        text: input.trim(),
+        ts: new Date().toISOString(),
+        fromMe: true,
+      });
+      setInput("");
       return;
     }
 
@@ -50,6 +59,14 @@ export default function MessageBox({ chatId, onSendMessage }) {
       setInput("");
     } catch (err) {
       console.error("🚨 Error sending message:", err);
+      // Fallback to local state if API fails
+      onSendMessage({
+        id: `msg-${Date.now()}`,
+        text: input.trim(),
+        ts: new Date().toISOString(),
+        fromMe: true,
+      });
+      setInput("");
     } finally {
       setLoading(false);
     }
@@ -57,8 +74,12 @@ export default function MessageBox({ chatId, onSendMessage }) {
 
   return (
     <form className="composer" onSubmit={handleSend}>
-      <button type="button" className="attach">
-        📎
+      <button 
+        type="button" 
+        className="attach"
+        aria-label="Attach file"
+      >
+        <Paperclip size={18} />
       </button>
       <input
         aria-label="Type a message"
@@ -67,8 +88,13 @@ export default function MessageBox({ chatId, onSendMessage }) {
         placeholder="Type a message..."
         disabled={loading}
       />
-      <button type="submit" className="send" disabled={loading}>
-        {loading ? "..." : "➤"}
+      <button 
+        type="submit" 
+        className="send" 
+        disabled={loading}
+        aria-label="Send message"
+      >
+        {loading ? "..." : <Send size={18} />}
       </button>
     </form>
   );

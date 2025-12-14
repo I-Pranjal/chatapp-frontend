@@ -19,16 +19,158 @@ const CURRENT_USER = {
   name: "Doctor Strange",
 };
 
+// Sample conversations for demo
+const SAMPLE_CONVERSATIONS = [
+  {
+    id: "sample-1",
+    name: "Sarah Johnson",
+    avatarColor: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    lastMessage: "That sounds great! Let me know when you're ready.",
+    lastTime: "2m",
+    messages: [
+      {
+        id: "msg-1",
+        text: "Hey! How's the project coming along?",
+        ts: new Date(Date.now() - 600000).toISOString(),
+        fromMe: false,
+      },
+      {
+        id: "msg-2",
+        text: "Going well! Just finishing up the last few features.",
+        ts: new Date(Date.now() - 480000).toISOString(),
+        fromMe: true,
+      },
+      {
+        id: "msg-3",
+        text: "That sounds great! Let me know when you're ready.",
+        ts: new Date(Date.now() - 120000).toISOString(),
+        fromMe: false,
+      },
+    ],
+  },
+  {
+    id: "sample-2",
+    name: "Engineering Team",
+    avatarColor: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+    lastMessage: "Meeting scheduled for tomorrow at 10 AM",
+    lastTime: "1h",
+    messages: [
+      {
+        id: "msg-4",
+        text: "Good morning everyone! 👋",
+        ts: new Date(Date.now() - 7200000).toISOString(),
+        fromMe: false,
+      },
+      {
+        id: "msg-5",
+        text: "Morning! What's on the agenda today?",
+        ts: new Date(Date.now() - 7000000).toISOString(),
+        fromMe: true,
+      },
+      {
+        id: "msg-6",
+        text: "We need to discuss the new feature requirements.",
+        ts: new Date(Date.now() - 6800000).toISOString(),
+        fromMe: false,
+      },
+      {
+        id: "msg-7",
+        text: "Sounds good. I've prepared some mockups.",
+        ts: new Date(Date.now() - 6600000).toISOString(),
+        fromMe: true,
+      },
+      {
+        id: "msg-8",
+        text: "Meeting scheduled for tomorrow at 10 AM",
+        ts: new Date(Date.now() - 3600000).toISOString(),
+        fromMe: false,
+      },
+    ],
+  },
+  {
+    id: "sample-3",
+    name: "Michael Chen",
+    avatarColor: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+    lastMessage: "Thanks for your help!",
+    lastTime: "3h",
+    messages: [
+      {
+        id: "msg-9",
+        text: "Could you help me with the deployment issue?",
+        ts: new Date(Date.now() - 14400000).toISOString(),
+        fromMe: false,
+      },
+      {
+        id: "msg-10",
+        text: "Sure! What's the error you're seeing?",
+        ts: new Date(Date.now() - 14000000).toISOString(),
+        fromMe: true,
+      },
+      {
+        id: "msg-11",
+        text: "It's throwing a 500 error when I try to deploy to production.",
+        ts: new Date(Date.now() - 13800000).toISOString(),
+        fromMe: false,
+      },
+      {
+        id: "msg-12",
+        text: "Check your environment variables. That's usually the culprit.",
+        ts: new Date(Date.now() - 13600000).toISOString(),
+        fromMe: true,
+      },
+      {
+        id: "msg-13",
+        text: "That was it! Thanks for your help! 🙏",
+        ts: new Date(Date.now() - 10800000).toISOString(),
+        fromMe: false,
+      },
+    ],
+  },
+  {
+    id: "sample-4",
+    name: "Emma Wilson",
+    avatarColor: "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
+    lastMessage: "See you tomorrow!",
+    lastTime: "2d",
+    messages: [
+      {
+        id: "msg-14",
+        text: "Are we still on for the design review?",
+        ts: new Date(Date.now() - 172800000).toISOString(),
+        fromMe: false,
+      },
+      {
+        id: "msg-15",
+        text: "Yes! 2 PM tomorrow works for me.",
+        ts: new Date(Date.now() - 172700000).toISOString(),
+        fromMe: true,
+      },
+      {
+        id: "msg-16",
+        text: "Perfect! I'll bring the latest mockups.",
+        ts: new Date(Date.now() - 172600000).toISOString(),
+        fromMe: false,
+      },
+      {
+        id: "msg-17",
+        text: "See you tomorrow! 👋",
+        ts: new Date(Date.now() - 172500000).toISOString(),
+        fromMe: false,
+      },
+    ],
+  },
+];
+
 function AppInner() {
-  const [conversations, setConversations] = useState([]);
+  const [conversations, setConversations] = useState(SAMPLE_CONVERSATIONS);
   const [activeId, setActiveId] = useState(null);
   const [query, setQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const navigate = useNavigate();
 
-  // ✅ Fetch messages when activeId changes
+  // ✅ Fetch messages when activeId changes (skip for sample conversations)
   useEffect(() => {
-    if (!activeId) return;
+    if (!activeId || activeId.startsWith('sample-')) return;
 
     const fetchMessages = async () => {
       try {
@@ -86,9 +228,27 @@ function AppInner() {
   );
 
   // ✅ Send message dynamically
-  async function handleSendMessage(text) {
-    if (!text.trim() || !activeId) return;
+  async function handleSendMessage(newMessage) {
+    if (!newMessage || !newMessage.text?.trim() || !activeId) return;
 
+    // For sample conversations, just update local state
+    if (activeId.startsWith('sample-')) {
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === activeId
+            ? {
+                ...c,
+                messages: [...c.messages, newMessage],
+                lastMessage: newMessage.text,
+                lastTime: 'now'
+              }
+            : c
+        )
+      );
+      return;
+    }
+
+    // For real conversations, send to backend
     try {
       const token = localStorage.getItem("token");
       if (!token) {
@@ -104,7 +264,7 @@ function AppInner() {
         },
         body: JSON.stringify({
           chatId: activeId,
-          text: text.trim(),
+          text: newMessage.text.trim(),
         }),
       });
 
@@ -148,7 +308,7 @@ function AppInner() {
     const conv = conversations.find((c) => c.id === id) || active;
     if (!conv) return <div className="empty">No conversation found</div>;
     console.log("💬 Rendering chat for conversation:", conv);
-    return <ChatWindow conversation={conv} onSend={handleSendMessage} />;
+    return <ChatWindow conversation={conv} onSendMessage={handleSendMessage} />;
   }
 
   function ChatPage() {

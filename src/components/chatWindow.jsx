@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from "react";
-import { Video, Phone, Ellipsis } from "lucide-react";
+import { Video, Phone, MoreHorizontal } from "lucide-react";
 import MessageBox from "./MessageBox";
 
 const timeString = (ts) => {
@@ -25,7 +25,7 @@ export default function ChatWindow({
         <div className="header-left">
           <div
             className="avatar small"
-            style={{ background: conversation.avatarColor }}
+            style={{ background: conversation.avatarColor || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
           >
             {conversation.name?.[0]}
           </div>
@@ -35,14 +35,14 @@ export default function ChatWindow({
           </div>
         </div>
         <div className="header-right">
-          <button className="icon-btn">
-            <Phone />
+          <button className="icon-btn" aria-label="Start voice call">
+            <Phone size={18} />
           </button>
-          <button className="icon-btn">
-            <Video />
+          <button className="icon-btn" aria-label="Start video call">
+            <Video size={18} />
           </button>
-          <button className="icon-btn">
-            <Ellipsis />
+          <button className="icon-btn" aria-label="More options">
+            <MoreHorizontal size={18} />
           </button>
         </div>
       </div>
@@ -57,7 +57,7 @@ export default function ChatWindow({
             {!m.fromMe && (
               <div
                 className="avatar tiny"
-                style={{ background: conversation.avatarColor }}
+                style={{ background: conversation.avatarColor || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
               >
                 {conversation.name?.[0]}
               </div>
