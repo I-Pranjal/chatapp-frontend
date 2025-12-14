@@ -70,19 +70,20 @@ export default function AuthPage() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-4"
+      className="min-h-screen w-screen flex items-center justify-center"
       style={{ 
-        width: "100vw",
         background: "#f7f6f3",
-        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        padding: "24px"
       }}
     >
       <div 
-        className="w-full max-w-md bg-white p-8"
+        className="w-full max-w-md bg-white"
         style={{
           borderRadius: "20px",
           boxShadow: "0 4px 16px rgba(0, 0, 0, 0.12)",
-          border: "1px solid #e9e8e5"
+          border: "1px solid #e9e8e5",
+          padding: "24px 24px"
         }}
       >
         <h2 
@@ -92,8 +93,8 @@ export default function AuthPage() {
           {isLogin ? "Welcome Back 👋" : "Create Account 🚀"}
         </h2>
         <p 
-          className="text-center text-sm mb-8"
-          style={{ color: "#787774" }}
+          className="text-center text-sm"
+          style={{ color: "#787774", marginBottom: "20px" }}
         >
           {isLogin
             ? "Sign in to continue chatting"
@@ -113,31 +114,35 @@ export default function AuthPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} noValidate>
+        <form onSubmit={handleSubmit} noValidate style={{ display: "grid", gap: "14px" }}>
           {/* Name (Sign Up Only) */}
           {!isLogin && (
-            <div className="mb-4 relative">
+            <div className="relative" style={{ marginBottom: "6px" }}>
               <label
                 htmlFor="name"
-                className="block text-sm font-medium mb-1"
-                style={{ color: "#37352f" }}
+                className="block text-sm font-medium"
+                style={{ color: "#37352f", marginBottom: "8px" }}
               >
                 Name
               </label>
               <div className="relative">
                 <User 
-                  className="absolute left-3 top-2.5 w-4 h-4" 
-                  style={{ color: "#9b9a97" }}
+                  className="absolute w-4 h-4" 
+                  style={{ color: "#9b9a97", left: "12px", top: "50%", transform: "translateY(-50%)" }}
                 />
                 <input
                   id="name"
-                  className="block w-full pl-9 pr-3 py-2 text-sm"
+                  className="block w-full text-sm"
                   style={{
                     background: "#ffffff",
                     color: "#37352f",
                     border: "1px solid #e9e8e5",
                     borderRadius: "8px",
-                    transition: "all 0.15s"
+                    transition: "all 0.15s",
+                    paddingLeft: "36px",
+                    paddingRight: "14px",
+                    paddingTop: "10px",
+                    paddingBottom: "10px"
                   }}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -153,28 +158,32 @@ export default function AuthPage() {
           )}
 
           {/* Contact */}
-          <div className="mb-4 relative">
+          <div className="relative" style={{ marginBottom: "6px" }}>
             <label
               htmlFor="contact"
-              className="block text-sm font-medium mb-1"
-              style={{ color: "#37352f" }}
+              className="block text-sm font-medium"
+              style={{ color: "#37352f", marginBottom: "8px" }}
             >
               Contact No.
             </label>
             <div className="relative">
               <Phone 
-                className="absolute left-3 top-2.5 w-4 h-4" 
-                style={{ color: "#9b9a97" }}
+                className="absolute w-4 h-4" 
+                style={{ color: "#9b9a97", left: "12px", top: "50%", transform: "translateY(-50%)" }}
               />
               <input
                 id="contact"
-                className="block w-full pl-9 pr-3 py-2 text-sm"
+                className="block w-full text-sm"
                 style={{
                   background: "#ffffff",
                   color: "#37352f",
                   border: "1px solid #e9e8e5",
                   borderRadius: "8px",
-                  transition: "all 0.15s"
+                  transition: "all 0.15s",
+                  paddingLeft: "36px",
+                  paddingRight: "14px",
+                  paddingTop: "10px",
+                  paddingBottom: "10px"
                 }}
                 value={contact}
                 onChange={(e) =>
@@ -192,29 +201,33 @@ export default function AuthPage() {
           </div>
 
           {/* Password */}
-          <div className="mb-6 relative">
+          <div className="relative" style={{ marginBottom: "10px" }}>
             <label
               htmlFor="password"
-              className="block text-sm font-medium mb-1"
-              style={{ color: "#37352f" }}
+              className="block text-sm font-medium"
+              style={{ color: "#37352f", marginBottom: "8px" }}
             >
               Password
             </label>
             <div className="relative">
               <Lock 
-                className="absolute left-3 top-2.5 w-4 h-4" 
-                style={{ color: "#9b9a97" }}
+                className="absolute w-4 h-4" 
+                style={{ color: "#9b9a97", left: "12px", top: "50%", transform: "translateY(-50%)" }}
               />
               <input
                 id="password"
                 type={showPassword ? "text" : "password"}
-                className="block w-full pl-9 pr-10 py-2 text-sm"
+                className="block w-full text-sm"
                 style={{
                   background: "#ffffff",
                   color: "#37352f",
                   border: "1px solid #e9e8e5",
                   borderRadius: "8px",
-                  transition: "all 0.15s"
+                  transition: "all 0.15s",
+                  paddingLeft: "36px",
+                  paddingRight: "40px",
+                  paddingTop: "10px",
+                  paddingBottom: "10px"
                 }}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -224,8 +237,8 @@ export default function AuthPage() {
               />
               <Eye
                 onClick={() => setShowPassword((s) => !s)}
-                className="w-4 h-4 absolute right-3 top-3 cursor-pointer"
-                style={{ color: "#9b9a97" }}
+                className="w-4 h-4 absolute cursor-pointer"
+                style={{ color: "#9b9a97", right: "8px", top: "50%", transform: "translateY(-50%)" }}
                 onMouseEnter={(e) => e.target.style.color = "#37352f"}
                 onMouseLeave={(e) => e.target.style.color = "#9b9a97"}
               />
@@ -239,12 +252,14 @@ export default function AuthPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2 font-semibold text-white transition-all duration-200"
+            className="w-full font-semibold text-white"
             style={{
               background: loading ? "rgba(35, 131, 226, 0.5)" : "#2383e2",
-              borderRadius: "8px",
+              borderRadius: "10px",
               border: "none",
-              cursor: loading ? "not-allowed" : "pointer"
+              cursor: loading ? "not-allowed" : "pointer",
+              padding: "11px 14px",
+              transition: "background .15s ease"
             }}
             onMouseEnter={(e) => !loading && (e.target.style.background = "#1a6ec4")}
             onMouseLeave={(e) => !loading && (e.target.style.background = "#2383e2")}
@@ -261,8 +276,8 @@ export default function AuthPage() {
 
         {/* Switch Mode */}
         <p 
-          className="text-center text-sm mt-6 flex items-center justify-center"
-          style={{ color: "#787774" }}
+          className="text-center text-sm flex items-center justify-center"
+          style={{ color: "#787774", marginTop: "16px" }}
         >
           {isLogin ? "New here ? " : "Already registered ? "}{" "}
           <span
