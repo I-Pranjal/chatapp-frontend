@@ -511,6 +511,15 @@ body {
   color: var(--text-primary);
 }
 
+.home-animation {
+  width: 220px;
+  height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
 .home h1 {
   font-size: 2rem;
   margin-bottom: 1rem;

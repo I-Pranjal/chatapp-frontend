@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import "./App.css";
 import ChatWindow from "./components/chatWindow.jsx";
 import Sidebar from "./components/Sidebar.jsx";
@@ -342,6 +343,13 @@ function AppInner() {
         path="/"
         element={
           <div className="home">
+            <div className="home-animation">
+              <DotLottieReact
+                src="https://lottie.host/0ccd2445-454e-4cdf-bd9a-36de0e8ff2a3/DXz2JwGevI.lottie"
+                loop
+                autoplay
+              />
+            </div>
             <h1>Welcome</h1>
             <nav style={{ display: "flex", gap: 12 }}>
               <Link to="/login">Login Page</Link>
