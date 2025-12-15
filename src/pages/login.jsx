@@ -49,9 +49,20 @@ export default function AuthPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Authentication failed");
 
-      if (data.token) localStorage.setItem("token", data.token);
+      // Store the access token from auth service
+      const token = data.accessToken || data.token;
+      if (token) {
+        localStorage.setItem("token", token);
+        // Optionally store refresh token
+        if (data.refreshToken) {
+          localStorage.setItem("refreshToken", data.refreshToken);
+        }
+      } else {
+        throw new Error("No authentication token received");
+      }
+
       setMessage({
-        type: "success",
+        type: "success", 
         text: isLogin
           ? "Login successful ✅"
           : "Account created successfully 🎉",

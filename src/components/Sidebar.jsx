@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Search, Plus, Settings } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function Sidebar({
   sidebarOpen,
@@ -15,12 +16,14 @@ export default function Sidebar({
 }) {
   const [users, setUsers] = useState([]);
   const [useSampleData, setUseSampleData] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     async function fetchUsers() {
       try {
         const response = await axios.get('http://localhost:5002/api/users');
         setUsers(response.data.users);
+        // console.log('Fetched users from backend:', response.data.users);
         setUseSampleData(false);
       } catch (error) {
         console.log('Using sample data - backend not available');
@@ -51,6 +54,7 @@ export default function Sidebar({
           </button>
           <button
             className="icon-btn"
+            onClick={() => navigate('/settings')}
             title="Settings"
             aria-label="Settings"
           >

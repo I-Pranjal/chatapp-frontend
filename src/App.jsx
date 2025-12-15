@@ -3,6 +3,7 @@ import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import "./App.css";
 import ChatWindow from "./components/chatWindow.jsx";
 import Sidebar from "./components/Sidebar.jsx";
+import Settings from "./components/Settings.jsx";
 import {
   BrowserRouter as Router,
   Routes,
@@ -217,6 +218,23 @@ function AppInner() {
         });
       } catch (err) {
         console.error("❌ Failed to load chat:", err);
+        console.log("📝 Using sample chat data as fallback...");
+        
+        // Fallback: Create a sample chat with empty messages
+        const fallbackChat = {
+          id: activeId,
+          name: "Chat User",
+          avatarColor: "#4B7BE5",
+          messages: [], // Empty messages will trigger the cat animation
+        };
+
+        setConversations((prev) => {
+          const exists = prev.find((c) => c.id === activeId);
+          if (exists) {
+            return prev.map((c) => (c.id === activeId ? fallbackChat : c));
+          }
+          return [...prev, fallbackChat];
+        });
       }
     };
 
@@ -306,8 +324,12 @@ function AppInner() {
       if (id) setActiveId(id);
     }, [id]);
 
-    const conv = conversations.find((c) => c.id === id) || active;
-    if (!conv) return <div className="empty">No conversation found</div>;
+    // Ensure string comparison for id matching
+    const conv = conversations.find((c) => String(c.id) === String(id)) || active;
+    if (!conv) {
+      console.warn("⚠️ No conversation found for id:", id);
+      return <div className="empty">No conversation found</div>;
+    }
     console.log("💬 Rendering chat for conversation:", conv);
     return <ChatWindow conversation={conv} onSendMessage={handleSendMessage} />;
   }
@@ -360,6 +382,7 @@ function AppInner() {
       />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/chat/*" element={<ChatPage />} />
+      <Route path="/settings" element={<Settings />} />
       <Route path="*" element={<div className="empty">Page not found</div>} />
     </Routes>
   );
