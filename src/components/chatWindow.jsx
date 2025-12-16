@@ -1,9 +1,9 @@
 import React, { useRef, useEffect, useState } from "react";
-import { Video, Phone, MoreHorizontal } from "lucide-react";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import MessageBox from "./MessageBox";
+import ChatHeader from "./ChatHeader";
 
-const API_BASE = "http://localhost:5002/api"; // Users service
+const CHAT_API = "http://localhost:5003/api/chats"; // Chat service
 
 const timeString = (ts) => {
   if (!ts) return "";
@@ -14,11 +14,13 @@ const timeString = (ts) => {
 export default function ChatWindow({
   conversation = { id: "", name: "", avatarColor: "#4B7BE5", messages: [] },
   onSendMessage = () => {},
+  activeChatUser = null,
 }) {
   const messagesEnd = useRef(null);
-  const [userInfo, setUserInfo] = useState(null);
-  const [loadingUser, setLoadingUser] = useState(false);
-  const [userError, setUserError] = useState("");
+  const [chatInfo, setChatInfo] = useState(null);
+  const [userDetails, setUserDetails] = useState(null);
+  const [loadingChat, setLoadingChat] = useState(false);
+  const [chatError, setChatError] = useState("");
 
   // Ensure conversation has all required fields
   const safeConversation = {
@@ -28,28 +30,30 @@ export default function ChatWindow({
     messages: Array.isArray(conversation?.messages) ? conversation.messages : [],
   };
 
-  // Fetch user information
+  // Fetch chat details to get member names
   useEffect(() => {
     if (!safeConversation.id || safeConversation.id.startsWith("sample-")) {
-      setUserInfo(null);
+      setChatInfo(null);
       return;
     }
 
-    async function fetchUserInfo() {
+    async function fetchChatInfo() {
       try {
-        setLoadingUser(true);
-        setUserError("");
+        setLoadingChat(true);
+        setChatError("");
         const token = localStorage.getItem("token");
         if (!token) {
-          setUserError("No auth token");
-          setLoadingUser(false);
+          setChatError("No auth token");
+          setLoadingChat(false);
           return;
         }
-        const res = await fetch(`${API_BASE}/users/${safeConversation.id}`, {
+        const res = await fetch(`${CHAT_API}/${safeConversation.id}`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
+            // Send profile id so backend can authorize one-on-one chat members
+            "x-profile-user-id": localStorage.getItem("userProfileId") || localStorage.getItem("userId"),
           },
         });
 
@@ -58,19 +62,45 @@ export default function ChatWindow({
         }
 
         const data = await res.json();
-        console.log("Fetched user info:", data.user.name);
-        console.log(safeConversation.name); 
-        setUserInfo(data.user);
+        console.log("📋 Fetched chat details:", data);
+        setChatInfo(data);
+
+        // Prefer global activeChatUser from App; if not present, try to infer
+        if (activeChatUser) {
+          setUserDetails(activeChatUser);
+        } else if (!data.isGroupChat && data.members?.length === 2) {
+          const profileId = localStorage.getItem("userProfileId") || localStorage.getItem("userId");
+          const authId = localStorage.getItem("authUserId");
+          // Find the other member id against both profile and auth ids
+          const otherMember = data.members.find((m) => m._id !== profileId && m._id !== authId);
+          if (otherMember?._id) {
+            try {
+              const userRes = await fetch(`http://localhost:5002/api/users/${otherMember._id}`, {
+                method: "GET",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+              });
+              if (userRes.ok) {
+                const userData = await userRes.json();
+                setUserDetails(userData.user);
+              }
+            } catch (err) {
+              console.warn("⚠️ Could not fetch user details:", err);
+            }
+          }
+        }
       } catch (err) {
-        console.error("❌ Failed to load user info:", err);
-        setUserError(err.message);
+        console.error("❌ Failed to load chat info:", err);
+        setChatError(err.message);
       } finally {
-        setLoadingUser(false);
+        setLoadingChat(false);
       }
     }
 
-    fetchUserInfo();
-  }, [safeConversation.id]);
+    fetchChatInfo();
+  }, [safeConversation.id, activeChatUser]);
 
   useEffect(() => {
     messagesEnd.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -78,39 +108,14 @@ export default function ChatWindow({
 
   return (
     <div className="chat-window">
-      {/* Unified Header */}
-      <div className="chat-header">
-        <div className="header-left">
-          <div
-            className="avatar small"
-            style={{ background: safeConversation.avatarColor }}
-          >
-            {safeConversation.name?.[0]}
-          </div>
-          <div className="title">
-            <div className="name">{userInfo?.name || safeConversation.name}</div>
-            <div className="status">
-              {userInfo?.contact && <span>{userInfo.contact}</span>}
-              {userInfo?.online ? (
-                <span className="online-badge">● Online</span>
-              ) : (
-                <span className="offline-badge">● Offline</span>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="header-right">
-          <button className="icon-btn" aria-label="Start voice call">
-            <Phone size={18} />
-          </button>
-          <button className="icon-btn" aria-label="Start video call">
-            <Video size={18} />
-          </button>
-          <button className="icon-btn" aria-label="More options">
-            <MoreHorizontal size={18} />
-          </button>
-        </div>
-      </div>
+      {/* Header */}
+      <ChatHeader
+        chatInfo={chatInfo}
+        userDetails={activeChatUser || userDetails}
+        avatarColor={safeConversation.avatarColor}
+        fallbackName={safeConversation.name}
+        currentUserId={localStorage.getItem("userProfileId") || localStorage.getItem("userId")}
+      />
 
       {/* Messages */}
       <div className="messages" role="log" aria-live="polite">
@@ -119,14 +124,15 @@ export default function ChatWindow({
           <div className="empty-chat-state">
             <div className="cat-animation">
               <DotLottieReact
-              src="https://lottie.host/0ccd2445-454e-4cdf-bd9a-36de0e8ff2a3/DXz2JwGevI.lottie"
-              loop
-              autoplay
-            />
+                src="https://lottie.host/0ccd2445-454e-4cdf-bd9a-36de0e8ff2a3/DXz2JwGevI.lottie"
+                loop
+                autoplay
+              />
             </div>
             <div className="empty-message">
               <h3>No messages yet</h3>
               <p>Start a conversation with {safeConversation.name}!</p>
+
             </div>
           </div>
         ) : (
@@ -161,10 +167,7 @@ export default function ChatWindow({
       </div>
 
       {/* Input Composer */}
-      <MessageBox
-        chatId={safeConversation.id}
-        onSendMessage={onSendMessage}
-      />
+      <MessageBox chatId={safeConversation.id} onSendMessage={onSendMessage} />
     </div>
   );
 }

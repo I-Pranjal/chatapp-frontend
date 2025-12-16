@@ -16,9 +16,13 @@ import {
 import LoginPage from "./pages/login.jsx";
 
 const API_BASE = "http://localhost:5003/api"; // ✅ Adjust if deployed
+const AUTH_API = "http://localhost:5001/api/auth";
+// Prefer Users microservice profile id; fall back to legacy userId and track auth id too
+const PROFILE_USER_ID = localStorage.getItem("userProfileId") || localStorage.getItem("userId") || "unknown";
+const AUTH_USER_ID = localStorage.getItem("authUserId") || "unknown";
 const CURRENT_USER = {
-  _id: "6901d9899976ace64f63d4ae",
-  name: "Doctor Strange",
+  _id: PROFILE_USER_ID,
+  name: localStorage.getItem("userName") || "User",
 };
 
 // Sample conversations for demo
@@ -168,7 +172,39 @@ function AppInner() {
   const [activeId, setActiveId] = useState(null);
   const [query, setQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [activeChatUser, setActiveChatUser] = useState(null); // Global state for active chat user info
   const navigate = useNavigate();
+
+  // Function to fetch and update active chat user info
+  const fetchActiveChatUser = async (userId) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        console.error("⚠️ No auth token found");
+        return;
+      }
+
+      const response = await fetch(`http://localhost:5002/api/users/${userId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("👤 Fetched active chat user:", data.user);
+        setActiveChatUser(data.user);
+      } else {
+        console.error("❌ Failed to fetch user details");
+        setActiveChatUser(null);
+      }
+    } catch (error) {
+      console.error("❌ Error fetching active chat user:", error);
+      setActiveChatUser(null);
+    }
+  };
 
   // ✅ Fetch messages when activeId changes (skip for sample conversations)
   useEffect(() => {
@@ -187,6 +223,8 @@ function AppInner() {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
+            // Provide profile user id so backend can authorize against chat members
+            "x-profile-user-id": PROFILE_USER_ID,
           },
         });
 
@@ -194,18 +232,42 @@ function AppInner() {
         const data = await res.json();
         console.log("📩 Fetched messages for chat:", activeId, data);
 
+        // Fetch chat details to get proper name
+        let chatName = "Chat";
+        try {
+          const chatRes = await fetch(`${API_BASE}/chats/${activeId}`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+              "x-profile-user-id": PROFILE_USER_ID,
+            },
+          });
+          if (chatRes.ok) {
+            const chatData = await chatRes.json();
+            const currentUserId = localStorage.getItem("userId");
+            if (chatData.isGroupChat) {
+              chatName = chatData.name || "Group Chat";
+            } else if (chatData.members?.length === 2) {
+              const otherMember = chatData.members.find(m => m._id !== currentUserId);
+              chatName = otherMember?.name || "Chat";
+            }
+          }
+        } catch (err) {
+          console.warn("⚠️ Could not fetch chat details:", err);
+        }
+
         // ✅ Find or create chat
         const formatted = {
           id: activeId,
-          name: data[0]?.sender?.name === CURRENT_USER.name
-            ? data[0]?.receiver?.name || "Unknown"
-            : data[0]?.sender?.name || "Unknown",
+          name: chatName,
           avatarColor: "#4B7BE5",
           messages: data.map((msg) => ({
             id: msg._id,
             text: msg.text,
             ts: msg.createdAt,
-            fromMe: msg.sender._id === CURRENT_USER._id,
+            // Mark as from me if sender matches profile id or auth id
+            fromMe: msg.sender._id === PROFILE_USER_ID || msg.sender._id === AUTH_USER_ID,
           })),
         };
 
@@ -331,7 +393,7 @@ function AppInner() {
       return <div className="empty">No conversation found</div>;
     }
     console.log("💬 Rendering chat for conversation:", conv);
-    return <ChatWindow conversation={conv} onSendMessage={handleSendMessage} />;
+    return <ChatWindow conversation={conv} onSendMessage={handleSendMessage} activeChatUser={activeChatUser} />;
   }
 
   function ChatPage() {
@@ -347,6 +409,7 @@ function AppInner() {
           selectConversation={(id) => navigate(`/chat/${id}`)}
           addConversation={() => {}}
           totalCount={conversations.length}
+          fetchActiveChatUser={fetchActiveChatUser}
         />
 
         <main className="main-area">

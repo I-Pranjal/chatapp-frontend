@@ -61,6 +61,59 @@ export default function AuthPage() {
         throw new Error("No authentication token received");
       }
 
+      // Fetch and store user info (Auth service)
+      try {
+        const userRes = await fetch('http://localhost:5001/api/auth/me', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          // Store Auth microservice user id separately
+          localStorage.setItem('authUserId', userData._id);
+          localStorage.setItem('userName', userData.name);
+          localStorage.setItem('userContact', userData.contact);
+          console.log('✅ User info stored:', userData);
+
+          // Map to Users microservice profile via contact and store profile user id
+          try {
+            const profileRes = await fetch('http://localhost:5002/api/users', {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+            });
+            if (profileRes.ok) {
+              const list = await profileRes.json();
+              const match = Array.isArray(list.users)
+                ? list.users.find((u) => String(u.contact) === String(userData.contact))
+                : null;
+              if (match?._id) {
+                localStorage.setItem('userProfileId', match._id);
+                // For backward compatibility, keep userId as profile id
+                localStorage.setItem('userId', match._id);
+                console.log('👤 Mapped profile user id:', match._id);
+              } else {
+                console.warn('⚠️ Unable to map profile user by contact. Falling back to auth id for userId.');
+                localStorage.setItem('userId', userData._id);
+              }
+            } else {
+              console.warn('⚠️ Failed to fetch users list for profile mapping');
+              localStorage.setItem('userId', userData._id);
+            }
+          } catch (mapErr) {
+            console.warn('⚠️ Error mapping to profile user:', mapErr);
+            localStorage.setItem('userId', userData._id);
+          }
+        }
+      } catch (err) {
+        console.warn('⚠️ Could not fetch user info:', err);
+      }
+
       setMessage({
         type: "success", 
         text: isLogin

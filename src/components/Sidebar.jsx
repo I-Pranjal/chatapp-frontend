@@ -13,6 +13,7 @@ export default function Sidebar({
   addConversation,
   filteredConversations = [],
   totalCount = 0,
+  fetchActiveChatUser,
 }) {
   const [users, setUsers] = useState([]);
   const [useSampleData, setUseSampleData] = useState(true);
@@ -44,9 +45,12 @@ export default function Sidebar({
       selectConversation(user.id);
       return;
     }
+    console.log('User clicked:', user);
 
     try {
       const token = localStorage.getItem('token');
+      const profileUserId = localStorage.getItem('authUserId') ;
+      // console.log('Creating/accessing chat with user:', profileUserId);
       if (!token) {
         console.error('No auth token found. Redirecting to login.');
         navigate('/login');
@@ -59,7 +63,9 @@ export default function Sidebar({
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ userId: user._id }),
+        // Always use Users microservice ids to initiate chat
+        // Pass the initiator's profile id as well for services that support it
+        body: JSON.stringify({ userId: user.authID, initiatedByProfileId: profileUserId }),
       });
 
       if (!res.ok) {
@@ -75,6 +81,11 @@ export default function Sidebar({
       const chat = await res.json();
       const chatId = chat._id || chat.id;
       console.log('Chat ID:', chatId);
+
+      // Fetch active chat user info
+      if (fetchActiveChatUser && user._id) {
+        await fetchActiveChatUser(user._id);
+      }
 
       if (chatId) {
         selectConversation(chatId);
@@ -178,6 +189,7 @@ export default function Sidebar({
                 </div>
                 <div className="last">
                   {user.lastSeen ? new Date(user.lastSeen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Offline'}
+                  {/* {user.authID} */}
                 </div>
               </div>
             </div>

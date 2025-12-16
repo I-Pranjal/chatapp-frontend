@@ -63,6 +63,18 @@ export default function Settings() {
     return date.toLocaleString();
   }
 
+  function handleLogout() {
+    // Clear all authentication data from localStorage
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('userContact');
+    console.log('✅ Logged out successfully');
+    // Redirect to login page
+    navigate('/login');
+  }
+
   return (
     <div className="settings-container">
       <div className="settings-header">
@@ -138,6 +150,28 @@ export default function Settings() {
                 readOnly
                 className="form-input"
               />
+            </div>
+
+            <div className="form-group">
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="logout-btn"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  backgroundColor: '#e74c3c',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  marginTop: '8px',
+                }}
+              >
+                Logout
+              </button>
             </div>
           </form>
         )}

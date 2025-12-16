@@ -34,6 +34,8 @@ export default function MessageBox({ chatId, onSendMessage }) {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          // Provide profile user id so backend can authorize against chat membership
+          "x-profile-user-id": localStorage.getItem("userProfileId") || localStorage.getItem("userId"),
         },
         body: JSON.stringify({
           chatId, // must match backend
