@@ -39,6 +39,51 @@ export default function Sidebar({
     user.name.toLowerCase().includes(query.toLowerCase())
   );
 
+  async function handleUserClick(user) {
+    if (useSampleData) {
+      selectConversation(user.id);
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('No auth token found. Redirecting to login.');
+        navigate('/login');
+        return;
+      }
+
+      const res = await fetch('http://localhost:5003/api/chats', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId: user._id }),
+      });
+
+      if (!res.ok) {
+        const txt = await res.text();
+        if (res.status === 401 || res.status === 403) {
+          console.warn('Auth failed while creating/accessing chat. Please log in again.');
+          navigate('/login');
+          return;
+        }
+        throw new Error(`Failed to create/access chat: ${txt}`);
+      }
+
+      const chat = await res.json();
+      const chatId = chat._id || chat.id;
+      console.log('Chat ID:', chatId);
+
+      if (chatId) {
+        selectConversation(chatId);
+      }
+    } catch (err) {
+      console.error('Error creating/accessing chat:', err);
+    }
+  }
+
   return (
     <aside className={`sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
       <div className="sidebar-top">
@@ -117,7 +162,7 @@ export default function Sidebar({
             <div
               key={user._id}
               className={`conversation-item ${user._id === activeId ? 'active' : ''}`}
-              onClick={() => selectConversation(user._id)}
+              onClick={() => handleUserClick(user)}
             >
               <div 
                 className="avatar" 

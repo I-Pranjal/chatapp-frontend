@@ -45,7 +45,6 @@ export default function ChatWindow({
           setLoadingUser(false);
           return;
         }
-
         const res = await fetch(`${API_BASE}/users/${safeConversation.id}`, {
           method: "GET",
           headers: {
