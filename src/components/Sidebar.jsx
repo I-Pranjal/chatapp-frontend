@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 export default function Sidebar({
   sidebarOpen,
   setSidebarOpen,
+  isMobile = false,
   query,
   setQuery,
   activeId,
@@ -43,6 +44,7 @@ export default function Sidebar({
   async function handleUserClick(user) {
     if (useSampleData) {
       selectConversation(user.id);
+      if (isMobile) setSidebarOpen(false);
       return;
     }
     console.log('User clicked:', user);
@@ -89,14 +91,17 @@ export default function Sidebar({
 
       if (chatId) {
         selectConversation(chatId);
+        if (isMobile) setSidebarOpen(false);
       }
     } catch (err) {
       console.error('Error creating/accessing chat:', err);
     }
   }
 
+  const sidebarClass = `sidebar ${sidebarOpen ? 'open' : 'closed'} ${isMobile ? 'mobile' : ''}`;
+
   return (
-    <aside className={`sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
+    <aside className={sidebarClass}>
       <div className="sidebar-top">
         <h2 className="brand">Messages</h2>
         <div className="sidebar-actions">

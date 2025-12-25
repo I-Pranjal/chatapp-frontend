@@ -16,6 +16,8 @@ export default function ChatWindow({
   conversation = { id: "", name: "", avatarColor: "#4B7BE5", messages: [] },
   onSendMessage = () => {},
   activeChatUser = null,
+  onToggleSidebar = () => {},
+  isMobile = false,
 }) {
   const messagesEnd = useRef(null);
   const [chatInfo, setChatInfo] = useState(null);
@@ -117,6 +119,8 @@ export default function ChatWindow({
         avatarColor={safeConversation.avatarColor}
         fallbackName={safeConversation.name}
         currentUserId={localStorage.getItem("userProfileId") || localStorage.getItem("userId")}
+        onToggleSidebar={onToggleSidebar}
+        isMobile={isMobile}
         onStartVideoCall={() => setVideoOpen(true)}
       />
 

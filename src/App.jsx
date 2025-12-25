@@ -175,7 +175,21 @@ function AppInner() {
   const [activeChatUser, setActiveChatUser] = useState(null); // Global state for active chat user info
   const [socket, setSocket] = useState(null);
   const [socketReady, setSocketReady] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 900);
   const navigate = useNavigate();
+
+  // Track viewport to drive responsive sidebar
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth <= 900;
+      setIsMobile(mobile);
+      setSidebarOpen(!mobile);
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Establish Socket.IO connection once a token exists
   useEffect(() => {
@@ -564,7 +578,15 @@ function AppInner() {
       return <div className="empty">No conversation found</div>;
     }
     console.log("💬 Rendering chat for conversation:", conv);
-    return <ChatWindow conversation={conv} onSendMessage={handleSendMessage} activeChatUser={activeChatUser} />;
+    return (
+      <ChatWindow
+        conversation={conv}
+        onSendMessage={handleSendMessage}
+        activeChatUser={activeChatUser}
+        onToggleSidebar={() => setSidebarOpen((v) => !v)}
+        isMobile={isMobile}
+      />
+    );
   }
 
   function ChatPage() {
@@ -573,6 +595,7 @@ function AppInner() {
         <Sidebar
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
+          isMobile={isMobile}
           query={query}
           setQuery={setQuery}
           filteredConversations={filteredConversations()}
@@ -582,6 +605,14 @@ function AppInner() {
           totalCount={conversations.length}
           fetchActiveChatUser={fetchActiveChatUser}
         />
+
+        {isMobile && sidebarOpen && (
+          <div
+            className="backdrop"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Close sidebar"
+          />
+        )}
 
         <main className="main-area">
           <Routes>

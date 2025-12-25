@@ -1,7 +1,7 @@
 import React from "react";
-import { Video, Phone, MoreHorizontal } from "lucide-react";
+import { Video, Phone, MoreHorizontal, Menu } from "lucide-react";
 
-export default function ChatHeader({ chatInfo, userDetails, avatarColor, fallbackName, currentUserId, onStartVideoCall }) {
+export default function ChatHeader({ chatInfo, userDetails, avatarColor, fallbackName, currentUserId, onStartVideoCall, onToggleSidebar = () => {}, isMobile = false }) {
   const displayName = (() => {
     console.log("ChatHeader - chatInfo:", chatInfo);
     if (chatInfo?.name) return chatInfo.name;
@@ -30,6 +30,15 @@ export default function ChatHeader({ chatInfo, userDetails, avatarColor, fallbac
 
   return (
     <div className="chat-header">
+      {isMobile && (
+        <button
+          className="icon-btn hamburger-btn"
+          aria-label="Toggle sidebar"
+          onClick={() => onToggleSidebar()}
+        >
+          <Menu size={18} />
+        </button>
+      )}
       <div className="header-left">
         <div className="avatar small" style={{ background: avatarColor }}>
           {displayName?.[0]}

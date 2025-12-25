@@ -35,6 +35,7 @@ body {
   height: 100vh;
   width: 100vw;
   position: relative;
+  overflow: hidden;
 }
 
 /* Sidebar */
@@ -52,6 +53,27 @@ body {
   transform: translateX(-100%);
   width: 0;
   flex: 0 0 0;
+}
+
+.sidebar.mobile {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  z-index: 20;
+  box-shadow: var(--shadow-lg);
+}
+
+.sidebar.mobile.open {
+  transform: translateX(0);
+  width: 260px;
+  flex: 0 0 260px;
+}
+
+.sidebar.mobile.closed {
+  width: 260px;
+  flex: 0 0 260px;
+  transform: translateX(-100%);
 }
 
 .sidebar-top {
@@ -233,6 +255,20 @@ body {
   padding: 0;
   min-width: 0;
   min-height: 100vh;
+  position: relative;
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.25);
+  opacity: 1;
+  z-index: 15;
+  transition: opacity 0.25s ease;
+}
+
+.hamburger-btn {
+  display: none;
 }
 
 .chat-window {
@@ -376,6 +412,34 @@ body {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .app-root {
+    height: 100vh;
+  }
+
+  .sidebar {
+    transform: translateX(-100%);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .main-area {
+    width: 100%;
+  }
+
+  .chat-header {
+    gap: 8px;
+    padding-left: 12px;
+  }
+
+  .hamburger-btn {
+    display: inline-flex;
+    margin-right: 4px;
+  }
 }
 
 /* Empty Chat State */
