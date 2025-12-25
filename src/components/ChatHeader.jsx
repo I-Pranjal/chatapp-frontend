@@ -1,7 +1,7 @@
 import React from "react";
 import { Video, Phone, MoreHorizontal } from "lucide-react";
 
-export default function ChatHeader({ chatInfo, userDetails, avatarColor, fallbackName, currentUserId }) {
+export default function ChatHeader({ chatInfo, userDetails, avatarColor, fallbackName, currentUserId, onStartVideoCall }) {
   const displayName = (() => {
     console.log("ChatHeader - chatInfo:", chatInfo);
     if (chatInfo?.name) return chatInfo.name;
@@ -60,7 +60,11 @@ export default function ChatHeader({ chatInfo, userDetails, avatarColor, fallbac
         <button className="icon-btn" aria-label="Start voice call">
           <Phone size={18} />
         </button>
-        <button className="icon-btn" aria-label="Start video call">
+        <button
+          className="icon-btn"
+          aria-label="Start video call"
+          onClick={() => (typeof onStartVideoCall === 'function' ? onStartVideoCall() : console.log('Video call clicked'))}
+        >
           <Video size={18} />
         </button>
         <button className="icon-btn" aria-label="More options">

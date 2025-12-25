@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import { io } from "socket.io-client";
 import "./App.css";
 import ChatWindow from "./components/chatWindow.jsx";
 import Sidebar from "./components/Sidebar.jsx";
@@ -8,7 +9,6 @@ import {
   BrowserRouter as Router,
   Routes,
   Route,
-  Navigate,
   useParams,
   useNavigate,
   Link,
@@ -16,7 +16,7 @@ import {
 import LoginPage from "./pages/login.jsx";
 
 const API_BASE = "http://localhost:5003/api"; // ✅ Adjust if deployed
-const AUTH_API = "http://localhost:5001/api/auth";
+const SOCKET_URL = "http://localhost:5003";
 // Prefer Users microservice profile id; fall back to legacy userId and track auth id too
 const PROFILE_USER_ID = localStorage.getItem("userProfileId") || localStorage.getItem("userId") || "unknown";
 const AUTH_USER_ID = localStorage.getItem("authUserId") || "unknown";
@@ -173,7 +173,121 @@ function AppInner() {
   const [query, setQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeChatUser, setActiveChatUser] = useState(null); // Global state for active chat user info
+  const [socket, setSocket] = useState(null);
+  const [socketReady, setSocketReady] = useState(false);
   const navigate = useNavigate();
+
+  // Establish Socket.IO connection once a token exists
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    const s = io(SOCKET_URL, {
+      transports: ["websocket"],
+      autoConnect: true,
+      auth: { token },
+      extraHeaders: { Authorization: `Bearer ${token}` },
+    });
+
+    setSocket(s);
+
+    s.on("connect", () => {
+      console.log("🔌 Socket connected", s.id);
+      setSocketReady(true);
+    });
+
+    s.on("disconnect", () => {
+      console.warn("⚠️ Socket disconnected");
+      setSocketReady(false);
+    });
+
+    s.on("connect_error", (err) => {
+      console.error("❌ Socket connection error", err?.message || err);
+      setSocketReady(false);
+    });
+
+    // Server pushes newly created messages
+    s.on("message:new", (msg) => {
+      if (!msg?.chatId) return;
+      setConversations((prev) => {
+        const incoming = {
+          id: msg._id || msg.id,
+          text: msg.text,
+          ts: msg.createdAt || msg.ts || new Date().toISOString(),
+          fromMe:
+            msg.sender?._id === PROFILE_USER_ID ||
+            msg.sender?._id === AUTH_USER_ID,
+        };
+
+        const existing = prev.find((c) => c.id === msg.chatId);
+        if (!existing) {
+          return [
+            ...prev,
+            {
+              id: msg.chatId,
+              name: msg.chatName || "Chat",
+              avatarColor: "#4B7BE5",
+              messages: [incoming],
+              lastMessage: incoming.text,
+              lastTime: "now",
+            },
+          ];
+        }
+
+        const already = existing.messages?.some((m) => m.id === incoming.id);
+        let updatedMessages = existing.messages || [];
+
+        if (already) {
+          updatedMessages = existing.messages;
+        } else {
+          const pendingIndex = updatedMessages.findIndex(
+            (m) => m.pending && m.fromMe
+          );
+          updatedMessages =
+            pendingIndex >= 0
+              ? updatedMessages.map((m, idx) =>
+                  idx === pendingIndex ? { ...incoming, pending: false } : m
+                )
+              : [...updatedMessages, incoming];
+        }
+
+        return prev.map((c) =>
+          c.id === msg.chatId
+            ? {
+                ...c,
+                messages: updatedMessages,
+                lastMessage: incoming.text,
+                lastTime: "now",
+              }
+            : c
+        );
+      });
+    });
+
+    // Reconcile optimistic UI with saved ids
+    s.on("message:ack", ({ tempId, messageId }) => {
+      if (!tempId || !messageId) return;
+      setConversations((prev) =>
+        prev.map((c) => {
+          const hasTemp = c.messages?.some((m) => m.id === tempId);
+          if (!hasTemp) return c;
+          return {
+            ...c,
+            messages: c.messages.map((m) =>
+              m.id === tempId ? { ...m, id: messageId, pending: false } : m
+            ),
+          };
+        })
+      );
+    });
+
+    return () => {
+      setSocketReady(false);
+      s.removeAllListeners();
+      s.disconnect();
+      setSocket(null);
+    };
+  }, []);
 
   // Function to fetch and update active chat user info
   const fetchActiveChatUser = async (userId) => {
@@ -208,7 +322,7 @@ function AppInner() {
 
   // ✅ Fetch messages when activeId changes (skip for sample conversations)
   useEffect(() => {
-    if (!activeId || activeId.startsWith('sample-')) return;
+    if (!activeId || activeId.startsWith("sample-")) return;
 
     const fetchMessages = async () => {
       try {
@@ -303,25 +417,51 @@ function AppInner() {
     fetchMessages();
   }, [activeId]);
 
+  // ✅ Join/leave socket rooms when chat changes
+  useEffect(() => {
+    if (!socketReady || !socket || !activeId || activeId.startsWith("sample-")) {
+      return undefined;
+    }
+
+    socket.emit("chat:join", { chatId: activeId });
+    return () => {
+      socket.emit("chat:leave", { chatId: activeId });
+    };
+  }, [socketReady, socket, activeId]);
+
   const active = useMemo(
     () => conversations.find((c) => c.id === activeId) || null,
     [conversations, activeId]
   );
 
-  // ✅ Send message dynamically
-  async function handleSendMessage(newMessage) {
-    if (!newMessage || !newMessage.text?.trim() || !activeId) return;
+  // ✅ Send message via WebSocket with optimistic UI
+  async function handleSendMessage(rawInput) {
+    const text =
+      typeof rawInput === "string"
+        ? rawInput.trim()
+        : rawInput?.text?.trim();
 
-    // For sample conversations, just update local state
-    if (activeId.startsWith('sample-')) {
+    if (!text || !activeId) return;
+
+    const tempId = `tmp-${Date.now()}`;
+    const optimistic = {
+      id: tempId,
+      text,
+      ts: new Date().toISOString(),
+      fromMe: true,
+      pending: true,
+    };
+
+    // Sample conversations stay local
+    if (activeId.startsWith("sample-")) {
       setConversations((prev) =>
         prev.map((c) =>
           c.id === activeId
             ? {
                 ...c,
-                messages: [...c.messages, newMessage],
-                lastMessage: newMessage.text,
-                lastTime: 'now'
+                messages: [...c.messages, { ...optimistic, pending: false }],
+                lastMessage: text,
+                lastTime: "now",
               }
             : c
         )
@@ -329,44 +469,75 @@ function AppInner() {
       return;
     }
 
-    // For real conversations, send to backend
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        console.error("⚠️ No auth token found in localStorage");
-        return;
+    // Ensure the active conversation exists locally
+    setConversations((prev) => {
+      const exists = prev.find((c) => c.id === activeId);
+      if (!exists) {
+        return [
+          ...prev,
+          {
+            id: activeId,
+            name: "Chat",
+            avatarColor: "#4B7BE5",
+            messages: [optimistic],
+            lastMessage: text,
+            lastTime: "now",
+          },
+        ];
       }
+      return prev.map((c) =>
+        c.id === activeId
+          ? {
+              ...c,
+              messages: [...c.messages, optimistic],
+              lastMessage: text,
+              lastTime: "now",
+            }
+          : c
+      );
+    });
 
+    const token = localStorage.getItem("token");
+    if (!token) {
+      console.error("⚠️ No auth token found in localStorage");
+      return;
+    }
+
+    if (socketReady && socket) {
+      socket.emit("message:send", { chatId: activeId, text, tempId });
+      return;
+    }
+
+    // Fallback to REST if socket unavailable
+    try {
       const res = await fetch(`${API_BASE}/chats/message`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          chatId: activeId,
-          text: newMessage.text.trim(),
-        }),
+        body: JSON.stringify({ chatId: activeId, text }),
       });
 
-      if (!res.ok) throw new Error("Failed to send message");
+      if (!res.ok) throw new Error("Failed to send message via REST fallback");
       const saved = await res.json();
 
       setConversations((prev) =>
-        prev.map((c) =>
-          c.id === activeId
-            ? {
-                ...c,
-                messages: [
-                  ...c.messages,
-                  { id: saved._id, text: saved.text, ts: saved.createdAt, fromMe: true },
-                ],
-              }
-            : c
-        )
+        prev.map((c) => {
+          const hasTemp = c.messages?.some((m) => m.id === tempId);
+          if (!hasTemp) return c;
+          return {
+            ...c,
+            messages: c.messages.map((m) =>
+              m.id === tempId
+                ? { id: saved._id, text: saved.text, ts: saved.createdAt, fromMe: true }
+                : m
+            ),
+          };
+        })
       );
     } catch (err) {
-      console.error("❌ Error sending message:", err);
+      console.error("❌ Error sending message via fallback:", err);
     }
   }
 

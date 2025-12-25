@@ -13,12 +13,7 @@ export default function MessageBox({ chatId, onSendMessage }) {
     try {
       setLoading(true);
       // Delegate network send to parent (App.handleSendMessage)
-      onSendMessage({
-        id: `msg-${Date.now()}`,
-        text: input.trim(),
-        ts: new Date().toISOString(),
-        fromMe: true,
-      });
+      onSendMessage(input.trim());
       setInput("");
     } catch (err) {
       console.error("🚨 Error preparing message:", err);

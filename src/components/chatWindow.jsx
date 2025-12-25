@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from "react";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import MessageBox from "./MessageBox";
 import ChatHeader from "./ChatHeader";
+import VideoCall from "./VideoCall";
 
 const CHAT_API = "http://localhost:5003/api/chats"; // Chat service
 
@@ -21,6 +22,7 @@ export default function ChatWindow({
   const [userDetails, setUserDetails] = useState(null);
   const [loadingChat, setLoadingChat] = useState(false);
   const [chatError, setChatError] = useState("");
+  const [videoOpen, setVideoOpen] = useState(false);
 
   // Ensure conversation has all required fields
   const safeConversation = {
@@ -115,6 +117,7 @@ export default function ChatWindow({
         avatarColor={safeConversation.avatarColor}
         fallbackName={safeConversation.name}
         currentUserId={localStorage.getItem("userProfileId") || localStorage.getItem("userId")}
+        onStartVideoCall={() => setVideoOpen(true)}
       />
 
       {/* Messages */}
@@ -151,11 +154,11 @@ export default function ChatWindow({
               )}
 
               <div className="message-content">
-                <div className="bubble">
+                <div className={`bubble ${m.pending ? "pending" : ""}`}>
                   <div className="text">{m.text}</div>
                 </div>
                 <div className={`ts-outside ${m.fromMe ? "right" : "left"}`}>
-                  {timeString(m.ts)}
+                  {m.pending ? "sending..." : timeString(m.ts)}
                 </div>
               </div>
 
@@ -168,6 +171,12 @@ export default function ChatWindow({
 
       {/* Input Composer */}
       <MessageBox chatId={safeConversation.id} onSendMessage={onSendMessage} />
+      <VideoCall
+        isOpen={videoOpen}
+        onClose={() => setVideoOpen(false)}
+        calleeName={(activeChatUser && activeChatUser.name) || safeConversation.name}
+        chatName={safeConversation.name}
+      />
     </div>
   );
 }
